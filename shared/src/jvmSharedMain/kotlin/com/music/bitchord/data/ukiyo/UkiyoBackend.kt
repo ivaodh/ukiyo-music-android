@@ -15,9 +15,12 @@ import com.music.bitchord.data.model.ShelfLayout
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.UserPlaylist
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.Request
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.Locale
 
 @Serializable
@@ -64,6 +67,40 @@ private data class UkiyoPlaylist(
 
 @Serializable
 private data class UkiyoPlaylistResponse(val playlists: List<UkiyoPlaylist> = emptyList())
+
+@Serializable
+private data class UkiyoResolveRequest(
+    val artist: String,
+    val title: String,
+    val album: String? = null,
+    val durationMs: Long? = null,
+    val videoId: String? = null,
+    val qualityPreference: String = "eq+",
+)
+
+@Serializable
+private data class UkiyoFormat(
+    val codec: String? = null,
+    @SerialName("bitrateKbps") val bitrateKbps: Int? = null,
+)
+
+@Serializable
+private data class UkiyoResolveResponse(
+    val t: Int? = null,
+    val u: String? = null,
+    val f: UkiyoFormat? = null,
+    val source: String? = null,
+    val expiresAt: Long? = null,
+    val error: String? = null,
+    val message: String? = null,
+)
+
+data class UkiyoStream(
+    val url: String,
+    val codec: String?,
+    val kbps: Int?,
+    val headers: Map<String, String>,
+)
 
 @Serializable
 private data class UkiyoSearch(
@@ -238,6 +275,40 @@ object UkiyoBackend {
         )
     )
 
+    suspend fun resolve(
+        artist: String,
+        title: String,
+        album: String?,
+        durationMs: Long?,
+        videoId: String?,
+        quality: String = "eq+",
+    ): Result<UkiyoStream> = runCatching {
+        requireReady()
+        val response = post<UkiyoResolveRequest, UkiyoResolveResponse>(
+            "/tracks/resolve",
+            UkiyoResolveRequest(
+                artist = artist,
+                title = title,
+                album = album,
+                durationMs = durationMs,
+                videoId = videoId,
+                qualityPreference = quality,
+            ),
+        )
+        val url = response.u
+        if (response.t != 1 || url.isNullOrBlank()) {
+            throw IllegalStateException(response.message ?: response.error ?: "Ukiyo stream not found")
+        }
+        UkiyoStream(
+            url = url,
+            codec = response.f?.codec,
+            kbps = response.f?.bitrateKbps,
+            headers = buildMap {
+                UkiyoSession.deviceFingerprint?.let { put("X-Ukiyo-Device", it) }
+            },
+        )
+    }
+
     suspend fun moodGenreShelves(browseId: String): Result<List<HomeShelf>> = runCatching {
         val query = browseId.substringAfterLast(':')
         val result = searchPage(query, "songs")
@@ -280,6 +351,44 @@ object UkiyoBackend {
                             return
                         }
                         val parsed = runCatching { json.decodeFromString<T>(text) }
+                        if (cont.isActive) cont.resumeWith(parsed)
+                    }
+                }
+            })
+        }
+    }
+
+    private suspend inline fun <reified Req, reified Res> post(path: String, body: Req): Res {
+        val payload = json.encodeToString(body)
+        val request = Request.Builder()
+            .url("${UkiyoSession.baseUrl.trimEnd('/')}$path")
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
+            .apply {
+                UkiyoSession.token?.let { header("Authorization", "Bearer $it") }
+                UkiyoSession.deviceFingerprint?.let { header("X-Ukiyo-Device", it) }
+            }
+            .post(payload.toRequestBody("application/json".toMediaType()))
+            .build()
+
+        return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+            val call = Http.client.newCall(request)
+            cont.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : okhttp3.Callback {
+                override fun onFailure(call: okhttp3.Call, e: java.io.IOException) {
+                    if (cont.isActive) cont.resumeWith(Result.failure(e))
+                }
+
+                override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                    response.use {
+                        val text = it.body.string()
+                        if (!it.isSuccessful) {
+                            if (cont.isActive) cont.resumeWith(
+                                Result.failure(IllegalStateException("Ukiyo API ${it.code}: $text"))
+                            )
+                            return
+                        }
+                        val parsed = runCatching { json.decodeFromString<Res>(text) }
                         if (cont.isActive) cont.resumeWith(parsed)
                     }
                 }

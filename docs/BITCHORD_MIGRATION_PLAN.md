@@ -217,10 +217,13 @@ Total: roughly 5-8 weeks. Full UI appears in the first few days.
 - [x] Search results load from the Ukiyo backend.
 - [x] Library uses the Ukiyo backend and no longer shows the Google sign-in wall.
 - [x] BitChord Top Picks, home moods, and YouTube sign-in banner hidden for Ukiyo sessions.
+- [x] Playback resolves through the Ukiyo backend and the BitChord player plays it.
+- [x] Verified mini player, track row playing indicator, and background MediaSession with Ukiyo streams.
+- [ ] Android Auto and downloads still need Ukiyo resolver verification.
 - [ ] Replace auth with Ukiyo login (data-layer integration remains).
 - [x] Implement Ukiyo repository adapter first pass (Home, Search, Library).
 - [ ] Add missing backend endpoints.
-- [ ] Implement Ukiyo stream resolver.
+- [x] Implement Ukiyo stream resolver through `ukiyo://watch` and signed `/play` URLs.
 - [ ] Adapt downloads and Android Auto.
 - [ ] Remove provider code and dependencies.
 - [ ] Hide unsupported integrations.

@@ -115,6 +115,7 @@ import com.music.bitchord.data.model.ShelfItem
 import com.music.bitchord.data.model.artworkAt
 import com.music.bitchord.data.model.QueueTier
 import com.music.bitchord.data.sources.SourceRegistry
+import com.music.bitchord.data.ukiyo.UkiyoBackend
 import com.music.bitchord.download.Downloads
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
@@ -1403,6 +1404,31 @@ class PlaybackService : MediaLibraryService() {
             // usually *not* the one playing, which is exactly why the lines
             // have to say. See [TrackLog.about].
             val about = TrackLog.about(mediaIdIn(dataSpec.uri))
+            if (dataSpec.uri.scheme == "ukiyo") {
+                val videoId = dataSpec.uri.getQueryParameter("v")
+                    ?: throw java.io.IOException("Ukiyo track has no id")
+                val artist = dataSpec.uri.getQueryParameter("a").orEmpty()
+                val title = dataSpec.uri.getQueryParameter("n").orEmpty()
+                val album = dataSpec.uri.getQueryParameter("l")
+                val durationSec = dataSpec.uri.getQueryParameter("d")?.toLongOrNull()
+                val stream = runBlocking(about) {
+                    withTimeout(RESOLVE_TIMEOUT_MS) {
+                        UkiyoBackend.resolve(
+                            artist = artist,
+                            title = title,
+                            album = album,
+                            durationMs = durationSec?.times(1000),
+                            videoId = videoId,
+                            quality = "eq+",
+                        ).getOrThrow()
+                    }
+                }
+                NerdStats.recordSource(videoId, "Ukiyo")
+                return@Resolver dataSpec.buildUpon()
+                    .setUri(Uri.parse(stream.url))
+                    .setHttpRequestHeaders(stream.headers)
+                    .build()
+            }
             // A source-backed track is resolved by whichever source can serve
             // it, which is not necessarily the one it was queued from — see
             // [SourceResolver.resolve]. Handled ahead of the YouTube path
