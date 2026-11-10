@@ -1,0 +1,9 @@
+-keepattributes Signature
+-keepattributes *Annotation*
+-keep class app.ukiyo.music.data.api.dto.** { *; }
+-keep class app.ukiyo.music.data.api.** { *; }
+-keep class androidx.media3.** { *; }
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-dontwarn retrofit2.**
+-keep class com.google.gson.** { *; }

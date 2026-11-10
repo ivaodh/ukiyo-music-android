@@ -1,0 +1,23 @@
+Ukiyo Music Android
+Copyright (C) 2026 Ukiyo Music
+
+This application is licensed under the GNU General Public License, version 3.
+See LICENSE.
+
+Portions of the user interface are adapted from BitChord:
+  https://github.com/kushagrasinghx/BitChord
+  Upstream commit: acf219a7e4a7f52f026d4336d5c7ac5cf7bfafcc
+  Copyright (C) BitChord contributors
+  Licensed under the GNU General Public License, version 3.
+
+BitChord is not affiliated with, endorsed by, or connected to Ukiyo Music.
+
+Third-party libraries:
+  AndroidX / Jetpack Compose / Media3 - Apache License 2.0
+  Haze by Chris Banes - Apache License 2.0
+  Coil - Apache License 2.0
+  Retrofit / OkHttp - Apache License 2.0
+  Supabase - Apache License 2.0
+  Room / WorkManager / DataStore - Apache License 2.0
+
+Source code: https://github.com/ivaodh/ukiyo-music-android
