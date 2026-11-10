@@ -229,9 +229,13 @@ Total: roughly 5-8 weeks. Full UI appears in the first few days.
 - [x] Implement Ukiyo repository adapter first pass (Home, Search, Library).
 - [x] Add Ukiyo playback quality setting (EQ+, FLAC, AAC) and wire it to `/tracks/resolve`.
 - [x] Add multi-shelf Explore results (songs, albums, artists, playlists).
+- [x] Load album and playlist detail pages from Ukiyo `/playlists/<id>` (including user playlists via `/playlists/<id>/tracks`).
+- [x] Load artist pages from Ukiyo `/artists/<id>`; artist "Top songs" currently returns the first 5 tracks.
+- [ ] Expand artist pages with the full Top songs list and discography shelves.
 - [ ] Add missing backend endpoints.
 - [x] Implement Ukiyo stream resolver through `ukiyo://watch` and signed `/play` URLs.
 - [ ] Adapt downloads and Android Auto.
+- [ ] Deploy the private backend artist-shelf parser fix (blocked on SSH key passphrase).
 - [ ] Remove provider code and dependencies. The current branch still contains BitChord's Innertube/NewPipe/JioSaavn provider code because it was needed to make the full UI build. Playback no longer uses it for normal Ukiyo tracks, but it must be removed before the backend can be considered hidden.
 - [ ] Hide unsupported integrations.
 - [ ] Rebrand UI.

@@ -1,7 +1,9 @@
 package com.music.bitchord.data.ukiyo
 
+import com.music.bitchord.data.DebugLog as Log
 import com.music.bitchord.data.Http
 import com.music.bitchord.data.YtMusicRepository
+import com.music.bitchord.data.model.ArtistPage
 import com.music.bitchord.data.model.BrowseItem
 import com.music.bitchord.data.model.BrowseType
 import com.music.bitchord.data.model.HomeFeed
@@ -18,6 +20,11 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.Request
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -29,15 +36,76 @@ private data class UkiyoTrack(
     @SerialName("track_key") val trackKey: String? = null,
     val title: String? = null,
     val artist: String? = null,
-    val album: String? = null,
+    val artists: List<UkiyoArtistRef> = emptyList(),
+    val album: JsonElement? = null,
     @SerialName("duration_ms") val durationMsSnake: Long? = null,
     @SerialName("durationMs") val durationMsCamel: Long? = null,
+    @SerialName("durationSeconds") val durationSeconds: Long? = null,
     @SerialName("thumbnail_url") val thumbnailUrlSnake: String? = null,
     @SerialName("thumbnailUrl") val thumbnailUrlCamel: String? = null,
+    val thumbnails: List<UkiyoThumb> = emptyList(),
     @SerialName("video_id") val videoIdSnake: String? = null,
     @SerialName("videoId") val videoIdCamel: String? = null,
     val name: String? = null,
     val type: String? = null,
+)
+
+@Serializable
+private data class UkiyoArtistRef(
+    val name: String? = null,
+    val id: String? = null,
+)
+
+@Serializable
+private data class UkiyoThumb(val url: String? = null)
+
+@Serializable
+private data class UkiyoReleaseInfo(
+    val title: String? = null,
+    val description: String? = null,
+    val thumbnails: List<UkiyoThumb> = emptyList(),
+)
+
+@Serializable
+private data class UkiyoReleaseResponse(
+    val tracks: List<UkiyoTrack> = emptyList(),
+    val playlist: UkiyoReleaseInfo? = null,
+)
+
+@Serializable
+private data class UkiyoArtist(
+    val id: String? = null,
+    val name: String? = null,
+    @SerialName("thumbnailUrl") val thumbnailUrl: String? = null,
+)
+
+@Serializable
+private data class UkiyoArtistResponse(
+    val artist: UkiyoArtist? = null,
+    val tracks: List<UkiyoTrack> = emptyList(),
+    val name: String? = null,
+    val moreEndpoint: UkiyoArtistMore? = null,
+)
+
+@Serializable
+private data class UkiyoArtistMore(
+    val browseId: String? = null,
+    val params: String? = null,
+)
+
+@Serializable
+private data class UkiyoArtistMoreRequest(
+    val browseId: String,
+    val params: String,
+    val name: String? = null,
+)
+
+data class UkiyoReleasePage(
+    val songs: List<Song>,
+    val title: String? = null,
+    val subtitle: String? = null,
+    val thumbnailUrl: String? = null,
+    val description: String? = null,
 )
 
 @Serializable
@@ -113,6 +181,9 @@ private data class UkiyoSearch(
 )
 
 private val json = Json { ignoreUnknownKeys = true }
+private val USER_PLAYLIST_ID = Regex(
+    "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
 
 object UkiyoBackend {
 
@@ -230,6 +301,57 @@ object UkiyoBackend {
     suspend fun history(): Result<List<Song>> = runCatching {
         requireReady()
         get<UkiyoTrackList>("/library/history?limit=100").tracks.map { it.toSong() }
+    }
+
+    suspend fun releasePage(browseId: String): Result<UkiyoReleasePage> = runCatching {
+        requireReady()
+        val key = browseKey(browseId)
+        val id = key?.second?.takeIf { it.isNotBlank() } ?: browseId
+        val userPlaylist = key?.first == "playlist" && USER_PLAYLIST_ID.matches(id)
+        val response = if (userPlaylist) {
+            val tracks = get<UkiyoTrackList>("/playlists/${encode(id)}/tracks").tracks
+            val title = get<UkiyoPlaylistResponse>("/playlists").playlists
+                .firstOrNull { it.id == id }?.name
+            UkiyoReleaseResponse(tracks = tracks, playlist = UkiyoReleaseInfo(title = title))
+        } else {
+            get<UkiyoReleaseResponse>("/playlists/${encode(id)}")
+        }
+        UkiyoReleasePage(
+            songs = response.tracks.map { it.toSong() },
+            title = response.playlist?.title,
+            thumbnailUrl = response.playlist?.thumbnails?.lastOrNull()?.url,
+            description = response.playlist?.description,
+        )
+    }
+
+    suspend fun artistPage(browseId: String): Result<ArtistPage> = runCatching {
+        requireReady()
+        val id = browseKey(browseId)?.second?.takeIf { it.isNotBlank() } ?: browseId
+        val response = get<UkiyoArtistResponse>("/artists/${encode(id)}")
+        val name = response.artist?.name ?: response.name
+        val direct = response.tracks.map { it.toSong() }
+        val more = response.moreEndpoint?.let { endpoint ->
+            val browseId = endpoint.browseId
+            val params = endpoint.params
+            if (browseId.isNullOrBlank() || params.isNullOrBlank()) {
+                emptyList()
+            } else {
+                runCatching {
+                    post<UkiyoArtistMoreRequest, UkiyoTrackList>(
+                        "/artists/more",
+                        UkiyoArtistMoreRequest(browseId = browseId, params = params, name = name),
+                    ).tracks.map { it.toSong() }
+                }.getOrDefault(emptyList())
+            }
+        }.orEmpty()
+        val songs = (direct + more).distinctBy { it.videoId }.take(50)
+        ArtistPage(
+            songs = songs,
+            moreSongsBrowseId = null,
+            sections = emptyList(),
+            thumbnailUrl = response.artist?.thumbnailUrl,
+            name = name,
+        )
     }
 
     suspend fun userPlaylists(): Result<List<UserPlaylist>> = runCatching {
@@ -426,19 +548,35 @@ object UkiyoBackend {
 
     private fun encode(value: String): String = java.net.URLEncoder.encode(value, "UTF-8")
 
+    private fun browseKey(browseId: String): Pair<String, String>? {
+        if (!browseId.startsWith("ukiyo:")) return null
+        val rest = browseId.removePrefix("ukiyo:")
+        val kind = rest.substringBefore(':')
+        val id = rest.substringAfter(':', "")
+        return kind to id
+    }
+
     private fun UkiyoTrack.toSong(): Song {
-        val resolvedArtist = artist ?: "Unknown Artist"
+        val resolvedArtist = artist
+            ?: artists.mapNotNull { it.name }.joinToString(", ").ifBlank { null }
+            ?: "Unknown Artist"
         val resolvedTitle = title ?: name ?: "Unknown Track"
-        val durationMs = durationMsCamel ?: durationMsSnake
+        val durationMs = durationMsCamel ?: durationMsSnake ?: durationSeconds?.times(1000)
         val id = videoIdCamel ?: videoIdSnake ?: trackKey ?: id ?: "$resolvedArtist|$resolvedTitle"
         return Song(
             videoId = id,
             title = resolvedTitle,
             artist = resolvedArtist,
-            thumbnailUrl = thumbnailUrlCamel ?: thumbnailUrlSnake,
+            thumbnailUrl = thumbnailUrlCamel ?: thumbnailUrlSnake ?: thumbnails.lastOrNull()?.url,
             durationText = durationMs?.let(::formatDuration),
-            albumName = album,
+            albumName = albumName(),
         )
+    }
+
+    private fun UkiyoTrack.albumName(): String? = when (val value = album) {
+        is JsonPrimitive -> value.contentOrNull
+        is JsonObject -> value["name"]?.jsonPrimitive?.contentOrNull
+        else -> null
     }
 
     private fun UkiyoTrack.toShelfItem(): ShelfItem = toSong().toShelfItem()

@@ -772,17 +772,35 @@ object YtMusicRepository {
      * first response. The rest arrives behind a page that is by then already
      * being read — see [moreSongs].
      */
-    suspend fun browseSongs(browseId: String): Result<SongPage> = call("browse:$browseId") {
-        val response = Innertube.browse(browseId)
-        val page = if (browseId.startsWith("MPREb")) {
-            albumPageOf(response)
-        } else {
-            pageOf(response)
+    suspend fun browseSongs(browseId: String): Result<SongPage> {
+        if (UkiyoSession.isReady) {
+            return UkiyoBackend.releasePage(browseId).map { page ->
+                SongPage(
+                    songs = page.songs,
+                    continuation = null,
+                    header = page.title?.let {
+                        InnertubeParser.BrowseHeader(
+                            title = it,
+                            subtitle = page.subtitle.orEmpty(),
+                            thumbnailUrl = page.thumbnailUrl,
+                        )
+                    },
+                    description = page.description,
+                )
+            }
         }
-        // Only a playlist has an owner in the sense that matters — see
-        // parsePlaylistOwned — and only its own first response can be asked.
-        if (!browseId.startsWith("VL")) page
-        else page.copy(owned = InnertubeParser.parsePlaylistOwned(response))
+        return call("browse:$browseId") {
+            val response = Innertube.browse(browseId)
+            val page = if (browseId.startsWith("MPREb")) {
+                albumPageOf(response)
+            } else {
+                pageOf(response)
+            }
+            // Only a playlist has an owner in the sense that matters — see
+            // parsePlaylistOwned — and only its own first response can be asked.
+            if (!browseId.startsWith("VL")) page
+            else page.copy(owned = InnertubeParser.parsePlaylistOwned(response))
+        }
     }
 
     /**
@@ -909,8 +927,14 @@ object YtMusicRepository {
      *
      * Takes as long as the list is long — see [songsPaged].
      */
-    suspend fun allSongs(browseId: String): Result<List<Song>> = call("all:$browseId") {
-        songsPaged(browseId).ifEmpty { error("No tracks here") }
+    suspend fun allSongs(browseId: String): Result<List<Song>> {
+        if (UkiyoSession.isReady) {
+            return UkiyoBackend.releasePage(browseId)
+                .map { it.songs.ifEmpty { error("No tracks here") } }
+        }
+        return call("all:$browseId") {
+            songsPaged(browseId).ifEmpty { error("No tracks here") }
+        }
     }
 
     /**
@@ -1165,35 +1189,38 @@ object YtMusicRepository {
      * full release shelves (Albums, Singles & EPs) are fetched to populate
      * their complete discography.
      */
-    suspend fun artistPage(browseId: String): Result<ArtistPage> = call("artist:$browseId") {
-        val page = InnertubeParser.parseArtistPage(Innertube.browse(browseId))
-        coroutineScope {
-            val fullSongsDeferred = async {
-                page.moreSongsBrowseId?.let { playlistId ->
-                    runCatching { songsPaged(playlistId) }.getOrNull()
+    suspend fun artistPage(browseId: String): Result<ArtistPage> {
+        if (UkiyoSession.isReady) return UkiyoBackend.artistPage(browseId)
+        return call("artist:$browseId") {
+            val page = InnertubeParser.parseArtistPage(Innertube.browse(browseId))
+            coroutineScope {
+                val fullSongsDeferred = async {
+                    page.moreSongsBrowseId?.let { playlistId ->
+                        runCatching { songsPaged(playlistId) }.getOrNull()
+                    }
                 }
-            }
-            val shelvesDeferred = page.sections.map { shelf ->
-                async {
-                    val moreBrowseId = shelf.moreBrowseId
-                    if (moreBrowseId != null) {
-                        val fullItems = runCatching {
-                            itemsPaged(moreBrowseId, shelf.moreParams)
-                        }.getOrNull()
-                        if (!fullItems.isNullOrEmpty()) {
-                            shelf.copy(items = fullItems)
+                val shelvesDeferred = page.sections.map { shelf ->
+                    async {
+                        val moreBrowseId = shelf.moreBrowseId
+                        if (moreBrowseId != null) {
+                            val fullItems = runCatching {
+                                itemsPaged(moreBrowseId, shelf.moreParams)
+                            }.getOrNull()
+                            if (!fullItems.isNullOrEmpty()) {
+                                shelf.copy(items = fullItems)
+                            } else {
+                                shelf
+                            }
                         } else {
                             shelf
                         }
-                    } else {
-                        shelf
                     }
                 }
+                val fullSongs = fullSongsDeferred.await()
+                val fullShelves = shelvesDeferred.awaitAll()
+                val resolvedSongs = if (!fullSongs.isNullOrEmpty()) fullSongs else page.songs
+                page.copy(songs = resolvedSongs, sections = fullShelves)
             }
-            val fullSongs = fullSongsDeferred.await()
-            val fullShelves = shelvesDeferred.awaitAll()
-            val resolvedSongs = if (!fullSongs.isNullOrEmpty()) fullSongs else page.songs
-            page.copy(songs = resolvedSongs, sections = fullShelves)
         }
     }
 
@@ -1203,8 +1230,11 @@ object YtMusicRepository {
      * it needs the header (photo, Mix and Shuffle) and the first card of each
      * shelf.
      */
-    suspend fun artistLanding(browseId: String): Result<ArtistPage> = call("artistLanding:$browseId") {
-        InnertubeParser.parseArtistPage(Innertube.browse(browseId))
+    suspend fun artistLanding(browseId: String): Result<ArtistPage> {
+        if (UkiyoSession.isReady) return UkiyoBackend.artistPage(browseId)
+        return call("artistLanding:$browseId") {
+            InnertubeParser.parseArtistPage(Innertube.browse(browseId))
+        }
     }
 
     /**
