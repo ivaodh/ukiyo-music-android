@@ -16,6 +16,9 @@ import com.music.bitchord.data.sources.SourceResolver
 import com.music.bitchord.data.sources.SourceStream
 import com.music.bitchord.data.sources.StreamFormat
 import com.music.bitchord.data.sources.TrackMatcher
+import com.music.bitchord.data.ukiyo.UkiyoBackend
+import com.music.bitchord.data.ukiyo.UkiyoQuality
+import com.music.bitchord.data.ukiyo.UkiyoSession
 import com.music.bitchord.playback.AudioCache
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
@@ -1244,6 +1247,7 @@ object Downloads {
      *   a mid-download refusal and has to ask for the same rung it started on.
      */
     private suspend fun routeFor(context: Context, track: Song, quality: DownloadQuality): Route {
+        if (UkiyoSession.isReady) return ukiyoRoute(track, quality)
         val row = SourceRegistry.parseTrackKey(track.videoId)
         row?.let { (configId, trackId) ->
             fromRow(track, configId, trackId, quality)?.let { kept ->
@@ -1272,6 +1276,66 @@ object Downloads {
             },
         )
     }
+
+    /**
+     * A Ukiyo download: ask the backend for a signed stream, then keep whatever
+     * container the bytes actually turn out to be. The signed /play URL is
+     * probed exactly like a source URL, because Ukiyo picks its own provider
+     * and reports a codec name that does not always match the container.
+     */
+    private suspend fun ukiyoRoute(track: Song, quality: DownloadQuality): Route {
+        val preferences = when (quality) {
+            DownloadQuality.STANDARD -> listOf(UkiyoQuality.AAC.id)
+            DownloadQuality.HIGH -> listOf(UkiyoQuality.EQ_PLUS.id, UkiyoQuality.FLAC.id, UkiyoQuality.AAC.id)
+            DownloadQuality.LOSSLESS -> listOf(UkiyoQuality.FLAC.id, UkiyoQuality.EQ_PLUS.id, UkiyoQuality.AAC.id)
+        }
+        var lastFailure: Throwable? = null
+        var stream = null as com.music.bitchord.data.ukiyo.UkiyoStream?
+        for (preference in preferences) {
+            val result = UkiyoBackend.resolve(
+                artist = track.artist,
+                title = track.title,
+                album = track.albumName,
+                durationMs = null,
+                videoId = track.videoId,
+                quality = preference,
+            )
+            if (result.isSuccess) {
+                stream = result.getOrThrow()
+                break
+            }
+            lastFailure = result.exceptionOrNull()
+        }
+        val resolved = stream ?: throw (lastFailure ?: error("Ukiyo returned no stream"))
+        val probe = Downloader.probe(resolved.url, resolved.headers, resolved.codec)
+        val container = (probe as? Downloader.Probe.File)?.container
+            ?: ukiyoContainer(resolved.codec)
+            ?: error("Ukiyo returned a stream this app cannot save")
+        val format = listOfNotNull(
+            resolved.codec?.takeIf { it.isNotBlank() },
+            resolved.kbps?.takeIf { it > 0 }?.let { "$it kbps" },
+        ).joinToString(" · ").ifBlank { "Ukiyo" }
+        return Route(
+            extension = container.extension,
+            mimeType = container.mimeType,
+            describe = "$format via Ukiyo",
+            downloadFormat = format,
+            write = { sink, onProgress ->
+                Downloader.fetchDirect(resolved.url, resolved.headers, sink, onProgress)
+            },
+        )
+    }
+
+    private fun ukiyoContainer(codec: String?): Downloader.Container? =
+        when (codec?.trim()?.lowercase(Locale.ROOT)) {
+            "flac", "x-flac" -> Downloader.Container.FLAC
+            "mp3", "eq+" -> Downloader.Container.MP3
+            "aac", "m4a", "mp4", "alac" -> Downloader.Container.MP4
+            "wav", "wave" -> Downloader.Container.WAV
+            "ogg", "vorbis" -> Downloader.Container.OGG
+            "opus", "webm" -> Downloader.Container.WEBM
+            else -> null
+        }
 
     /**
      * A source's stream, with what [Downloader.probe] found at the end of it.

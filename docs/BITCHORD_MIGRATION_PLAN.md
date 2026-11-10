@@ -224,7 +224,10 @@ Total: roughly 5-8 weeks. Full UI appears in the first few days.
 - [x] Built release APKs for arm64, armv7, x86_64, and universal.
 - [x] Verified Ukiyo FLAC quality reaches the backend (`quality=eq`) and resolves through NetEase.
 - [x] Verified Explore category pages now show songs, albums, and artists shelves.
-- [ ] Android Auto and downloads still need Ukiyo resolver verification.
+- [x] Downloads use Ukiyo `/tracks/resolve` with FLAC/EQ+/AAC fallback.
+- [x] Verified Ukiyo FLAC downloads complete and a missing-lossless track falls back to AAC.
+- [ ] Download quality labels/settings still describe the old YouTube/source ladder.
+- [ ] Android Auto still needs Ukiyo browse/resolver verification.
 - [ ] Replace auth with Ukiyo login (data-layer integration remains).
 - [x] Implement Ukiyo repository adapter first pass (Home, Search, Library).
 - [x] Add Ukiyo playback quality setting (EQ+, FLAC, AAC) and wire it to `/tracks/resolve`.
@@ -234,7 +237,8 @@ Total: roughly 5-8 weeks. Full UI appears in the first few days.
 - [ ] Expand artist pages with the full Top songs list and discography shelves.
 - [ ] Add missing backend endpoints.
 - [x] Implement Ukiyo stream resolver through `ukiyo://watch` and signed `/play` URLs.
-- [ ] Adapt downloads and Android Auto.
+- [x] Adapt downloads to Ukiyo.
+- [ ] Adapt Android Auto browse and playback verification.
 - [ ] Deploy the private backend artist-shelf parser fix (blocked on SSH key passphrase).
 - [ ] Remove provider code and dependencies. The current branch still contains BitChord's Innertube/NewPipe/JioSaavn provider code because it was needed to make the full UI build. Playback no longer uses it for normal Ukiyo tracks, but it must be removed before the backend can be considered hidden.
 - [ ] Hide unsupported integrations.

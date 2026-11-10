@@ -557,8 +557,8 @@ object UkiyoBackend {
     }
 
     private fun UkiyoTrack.toSong(): Song {
-        val resolvedArtist = artist
-            ?: artists.mapNotNull { it.name }.joinToString(", ").ifBlank { null }
+        val resolvedArtist = cleanArtist(artist)
+            ?: cleanArtist(artists.mapNotNull { it.name }.joinToString(", "))
             ?: "Unknown Artist"
         val resolvedTitle = title ?: name ?: "Unknown Track"
         val durationMs = durationMsCamel ?: durationMsSnake ?: durationSeconds?.times(1000)
@@ -572,6 +572,13 @@ object UkiyoBackend {
             albumName = albumName(),
         )
     }
+
+    private fun cleanArtist(value: String?): String? = value
+        ?.split(',')
+        ?.map { it.trim() }
+        ?.filter { it.isNotEmpty() }
+        ?.joinToString(", ")
+        ?.takeIf { it.isNotEmpty() }
 
     private fun UkiyoTrack.albumName(): String? = when (val value = album) {
         is JsonPrimitive -> value.contentOrNull
