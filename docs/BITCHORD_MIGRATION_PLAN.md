@@ -247,6 +247,11 @@ Total: roughly 5-8 weeks. Full UI appears in the first few days.
 - [ ] Rebrand the remaining settings pages, integrations, and artwork.
 - [ ] Verify no provider URLs in APK.
 - [ ] Build release AAB and upload for internal testing.
+- [x] Rebuilt signed release artifacts after Ukiyo details/downloads (versionCode 3, versionName 1.1.0).
+  - AAB: `app/build/outputs/bundle/prodRelease/app-prod-release.aab`
+  - SHA-256: `bd4e6bcf06739c777f01f39eb1c2842ad957f04e62d9357948a075d0a4ad3acc`
+  - Universal APK: `app/build/outputs/apk/prod/release/app-prod-release.apk`
+- [ ] Deploy the private backend artist-shelf parser fix after unlocking the SSH key passphrase.
 
 ## Build commands
 
