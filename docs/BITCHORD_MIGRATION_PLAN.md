@@ -222,9 +222,13 @@ Total: roughly 5-8 weeks. Full UI appears in the first few days.
 - [x] Fixed AAB bundling with AGP 8.9+ ABI-split bug.
 - [x] Built signed release AAB `app-prod-release.aab` (versionCode 3, versionName 1.1.0).
 - [x] Built release APKs for arm64, armv7, x86_64, and universal.
+- [x] Verified Ukiyo FLAC quality reaches the backend (`quality=eq`) and resolves through NetEase.
+- [x] Verified Explore category pages now show songs, albums, and artists shelves.
 - [ ] Android Auto and downloads still need Ukiyo resolver verification.
 - [ ] Replace auth with Ukiyo login (data-layer integration remains).
 - [x] Implement Ukiyo repository adapter first pass (Home, Search, Library).
+- [x] Add Ukiyo playback quality setting (EQ+, FLAC, AAC) and wire it to `/tracks/resolve`.
+- [x] Add multi-shelf Explore results (songs, albums, artists, playlists).
 - [ ] Add missing backend endpoints.
 - [x] Implement Ukiyo stream resolver through `ukiyo://watch` and signed `/play` URLs.
 - [ ] Adapt downloads and Android Auto.

@@ -3,6 +3,8 @@ package com.music.bitchord.data.settings
 import com.music.bitchord.data.webdav.update
 import com.music.bitchord.ui.components.VideoThumbnails
 import android.content.Context
+import com.music.bitchord.data.ukiyo.UkiyoQuality
+import com.music.bitchord.data.ukiyo.UkiyoSession
 import android.content.SharedPreferences
 import android.net.ConnectivityManager
 import android.net.Network
@@ -195,6 +197,8 @@ object AppSettings {
      * to assume.
      */
     val audioQualityWifi = MutableStateFlow(AudioQuality.LOSSLESS)
+
+    val ukiyoQuality = MutableStateFlow(UkiyoQuality.EQ_PLUS)
     val audioQualityCellular = MutableStateFlow(AudioQuality.LOSSLESS)
 
     /** Allowed duration difference when replacing a playing stream with one from a source. */
@@ -963,6 +967,10 @@ object AppSettings {
         migrateSingleQuality()
         audioQualityWifi.value = readQuality(KEY_QUALITY_WIFI)
         audioQualityCellular.value = readQuality(KEY_QUALITY_CELLULAR)
+        ukiyoQuality.value = runCatching {
+            UkiyoQuality.valueOf(prefs.getString(KEY_UKIYO_QUALITY, null) ?: UkiyoQuality.EQ_PLUS.name)
+        }.getOrDefault(UkiyoQuality.EQ_PLUS)
+        UkiyoSession.quality = ukiyoQuality.value
         upgradeLengthSlackSeconds.value = prefs.getInt(
             KEY_UPGRADE_LENGTH_SLACK_SECONDS,
             DEFAULT_UPGRADE_LENGTH_SLACK_SECONDS,
@@ -1261,6 +1269,12 @@ object AppSettings {
     fun setAudioQualityWifi(value: AudioQuality) {
         audioQualityWifi.value = value
         prefs.edit().putString(KEY_QUALITY_WIFI, value.name).apply()
+    }
+
+    fun setUkiyoQuality(value: UkiyoQuality) {
+        ukiyoQuality.value = value
+        UkiyoSession.quality = value
+        prefs.edit().putString(KEY_UKIYO_QUALITY, value.name).apply()
     }
 
     fun setAudioQualityCellular(value: AudioQuality) {
@@ -2249,6 +2263,7 @@ object AppSettings {
 
     private const val KEY_QUALITY_LEGACY = "audio_quality"
     private const val KEY_QUALITY_WIFI = "audio_quality_wifi"
+    private const val KEY_UKIYO_QUALITY = "ukiyo_quality"
     private const val KEY_QUALITY_CELLULAR = "audio_quality_cellular"
     private const val KEY_UPGRADE_LENGTH_SLACK_SECONDS = "upgrade_length_slack_seconds"
     private const val KEY_QUALITY_DOWNLOAD = "audio_quality_download"

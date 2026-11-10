@@ -281,7 +281,7 @@ object UkiyoBackend {
         album: String?,
         durationMs: Long?,
         videoId: String?,
-        quality: String = "eq+",
+        quality: String = UkiyoSession.quality.id,
     ): Result<UkiyoStream> = runCatching {
         requireReady()
         val response = post<UkiyoResolveRequest, UkiyoResolveResponse>(
@@ -310,17 +310,41 @@ object UkiyoBackend {
     }
 
     suspend fun moodGenreShelves(browseId: String): Result<List<HomeShelf>> = runCatching {
+        requireReady()
         val query = browseId.substringAfterLast(':')
-        val result = searchPage(query, "songs")
-        val rows = result.getOrThrow().rows.filterIsInstance<SearchResult.Track>().map { it.song }
-        if (rows.isEmpty()) emptyList()
-        else listOf(
-            HomeShelf(
-                title = query,
-                items = rows.map { it.toShelfItem() },
-                layout = ShelfLayout.CARDS,
-            )
-        )
+        val page = searchPage(query, "all").getOrThrow()
+        val songs = page.rows.mapNotNull { row ->
+            when (row) {
+                is SearchResult.Track -> row.song
+                is SearchResult.TopTrack -> row.song
+                else -> null
+            }
+        }.distinctBy { it.videoId }
+        val browse = page.rows.filterIsInstance<SearchResult.Browse>().map { it.item }
+        val albums = browse.filter { it.type == BrowseType.ALBUM }
+        val artists = browse.filter { it.type == BrowseType.ARTIST }
+        val playlists = browse.filter { it.type == BrowseType.PLAYLIST }
+
+        buildList {
+            if (songs.isNotEmpty()) {
+                add(
+                    HomeShelf(
+                        title = "$query songs",
+                        items = songs.map { it.toShelfItem() },
+                        layout = ShelfLayout.LIST,
+                    )
+                )
+            }
+            if (albums.isNotEmpty()) {
+                add(HomeShelf("$query albums", albums.map { it.toShelfItem() }, layout = ShelfLayout.CARDS))
+            }
+            if (artists.isNotEmpty()) {
+                add(HomeShelf("$query artists", artists.map { it.toShelfItem() }, layout = ShelfLayout.CARDS))
+            }
+            if (playlists.isNotEmpty()) {
+                add(HomeShelf("$query playlists", playlists.map { it.toShelfItem() }, layout = ShelfLayout.CARDS))
+            }
+        }
     }
 
     private suspend inline fun <reified T> get(path: String): T {
@@ -441,6 +465,14 @@ object UkiyoBackend {
         thumbnailUrl = thumbnailUrl,
         videoId = null,
         browseId = "ukiyo:feed:${id.orEmpty()}",
+    )
+
+    private fun BrowseItem.toShelfItem(): ShelfItem = ShelfItem(
+        title = title,
+        subtitle = subtitle,
+        thumbnailUrl = thumbnailUrl,
+        videoId = null,
+        browseId = browseId,
     )
 
     private fun UkiyoTrack.toBrowseItem(type: BrowseType, subtitle: String): BrowseItem = BrowseItem(

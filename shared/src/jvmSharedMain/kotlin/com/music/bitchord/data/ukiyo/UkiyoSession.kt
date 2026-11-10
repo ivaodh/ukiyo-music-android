@@ -10,6 +10,9 @@ object UkiyoSession {
     @Volatile
     var baseUrl: String = "https://api.sagaci.top/api/android/v1"
 
+    @Volatile
+    var quality: UkiyoQuality = UkiyoQuality.EQ_PLUS
+
     val isReady: Boolean
         get() = !token.isNullOrBlank()
 }

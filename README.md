@@ -2,7 +2,7 @@
 
 BitChord-based Android client for Ukiyo Music.
 
-> This is the `bit-chord-base` migration branch. It currently builds the complete BitChord UI with a Ukiyo login gate. Home, Search, Library, and audio playback use the Ukiyo backend. Detail pages, downloads, Android Auto verification, and rebranding are still in progress. Do not upload this branch to Play yet.
+> This is the `bit-chord-base` migration branch. It currently builds the complete BitChord UI with a Ukiyo login gate. Home, Search, Library, Explore, playback quality, and audio streaming use the Ukiyo backend. Detail pages, downloads, Android Auto verification, provider-code removal, and rebranding are still in progress. Do not upload this branch to Play yet.
 
 The previous native Ukiyo app remains on `main` at v1.0.1.
 

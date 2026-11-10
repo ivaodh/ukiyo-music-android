@@ -1419,7 +1419,7 @@ class PlaybackService : MediaLibraryService() {
                             album = album,
                             durationMs = durationSec?.times(1000),
                             videoId = videoId,
-                            quality = "eq+",
+                            quality = AppSettings.ukiyoQuality.value.id,
                         ).getOrThrow()
                     }
                 }

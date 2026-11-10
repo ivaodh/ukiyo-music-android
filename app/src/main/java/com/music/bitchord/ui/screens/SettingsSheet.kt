@@ -166,6 +166,7 @@ import com.music.bitchord.data.settings.AutomixPerformanceMode
 import com.music.bitchord.R
 import com.music.bitchord.data.sources.DeviceCodecs
 import com.music.bitchord.data.settings.AudioQuality
+import com.music.bitchord.data.ukiyo.UkiyoQuality
 import com.music.bitchord.data.settings.DownloadQuality
 import com.music.bitchord.data.settings.ThemeMode
 import com.music.bitchord.data.settings.AppFont
@@ -228,6 +229,7 @@ fun SettingsScreen(
 
     val wifiQuality by AppSettings.audioQualityWifi.collectAsStateWithLifecycle()
     val cellularQuality by AppSettings.audioQualityCellular.collectAsStateWithLifecycle()
+    val ukiyoQuality by AppSettings.ukiyoQuality.collectAsStateWithLifecycle()
     val metered by AppSettings.meteredConnection.collectAsStateWithLifecycle()
     val crossfade by AppSettings.crossfadeSeconds.collectAsStateWithLifecycle()
     val smartFade by AppSettings.smartFadeEnabled.collectAsStateWithLifecycle()
@@ -550,6 +552,16 @@ fun SettingsScreen(
                         badge = stringResource(R.string.in_use).takeIf { metered == true },
                         value = cellularQuality.localizedLabel(),
                         onClick = { onOpenChoice(SettingsChoiceKind.AUDIO_QUALITY_CELLULAR) },
+                    )
+                }
+                val ukiyoQualityTitle = stringResource(R.string.ukiyo_quality)
+                row(ukiyoQualityTitle, "eq+", "flac", "aac", "streaming quality") {
+                    SettingsRow(
+                        icon = SfIcons.MusicNote,
+                        title = ukiyoQualityTitle,
+                        subtitle = stringResource(R.string.ukiyo_quality_subtitle),
+                        value = ukiyoQuality.label,
+                        onClick = { onOpenChoice(SettingsChoiceKind.UKIYO_QUALITY) },
                     )
                 }
                 // Sits with the quality ceilings rather than with Playback: it
@@ -2849,6 +2861,7 @@ enum class SettingsCategory(@param:StringRes val title: Int) {
 enum class SettingsChoiceKind(@param:StringRes val title: Int) {
     AUDIO_QUALITY_WIFI(R.string.on_wifi),
     AUDIO_QUALITY_CELLULAR(R.string.on_mobile_data),
+    UKIYO_QUALITY(R.string.ukiyo_quality),
     DOWNLOAD_QUALITY(R.string.download_quality),
     AUTOMIX_PERFORMANCE(R.string.automix_performance),
     BIT_PERFECT(R.string.bit_perfect_output),
@@ -2919,6 +2932,20 @@ fun SettingsChoicePage(
             // Priced per track rather than per hour, unlike the streaming
             // ceilings: a stream is paid for again on every replay, a download
             // once. Same list, different question.
+            SettingsChoiceKind.UKIYO_QUALITY -> {
+                val selected by AppSettings.ukiyoQuality.collectAsStateWithLifecycle()
+                ChoiceGroup(
+                    options = UkiyoQuality.entries,
+                    selected = selected,
+                    label = { it.label },
+                    detail = { it.detail },
+                    footer = stringResource(R.string.ukiyo_quality_subtitle),
+                ) { quality ->
+                    AppSettings.setUkiyoQuality(quality)
+                    onChosen()
+                }
+            }
+
             SettingsChoiceKind.DOWNLOAD_QUALITY -> {
                 val selected by AppSettings.downloadQuality.collectAsStateWithLifecycle()
                 ChoiceGroup(
