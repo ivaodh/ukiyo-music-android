@@ -209,7 +209,11 @@ Total: roughly 5-8 weeks. Full UI appears in the first few days.
 - [x] Install and screenshot on emulator. BitChord onboarding screen renders.
 - [x] Remove Apple SF Pro fonts and BitChord ONNX analysis models from the public tree for licensing/size; use platform sans for now.
 - [x] Build after font/model removal.
-- [ ] Replace auth with Ukiyo login.
+- [x] Added Ukiyo login gate using the private backend; store access/refresh token and register device.
+- [x] Skip BitChord onboarding after Ukiyo login.
+- [x] Disabled BitChord's GitHub update checker.
+- [x] Verified the full BitChord home UI appears after Ukiyo login.
+- [ ] Replace auth with Ukiyo login (data-layer integration remains).
 - [ ] Implement Ukiyo repository adapter.
 - [ ] Add missing backend endpoints.
 - [ ] Implement Ukiyo stream resolver.
