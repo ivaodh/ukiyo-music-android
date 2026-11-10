@@ -350,6 +350,8 @@ import com.music.bitchord.ui.screens.MoodGenrePlaylistsScreen
 import com.music.bitchord.ui.screens.SearchScreen
 import com.music.bitchord.data.settings.SongSort
 import com.music.bitchord.ui.onboarding.OnboardingScreen
+import com.music.bitchord.ukiyo.UkiyoAuthStore
+import com.music.bitchord.ukiyo.UkiyoLoginScreen
 import com.music.bitchord.ui.festive.DiwaliGate
 import com.music.bitchord.ui.festive.DiwaliGreetingScreen
 import com.music.bitchord.ui.replay.ReplayScreen
@@ -417,6 +419,15 @@ class MainActivity : AppCompatActivity() {
                 ThemeMode.DARK -> true
             }
             BitChordTheme(darkTheme = darkTheme, font = appFont) {
+                val context = LocalContext.current
+                val ukiyoAuth = remember { UkiyoAuthStore(context) }
+                var ukiyoAuthed by remember { mutableStateOf(ukiyoAuth.isLoggedIn) }
+                if (!ukiyoAuthed) {
+                    UkiyoLoginScreen(ukiyoAuth) {
+                        ukiyoAuthed = true
+                        AppSettings.setOnboardingComplete()
+                    }
+                } else {
                 // The glass surfaces sample this layer, and a layer records only
                 // what is drawn into it — which, for BitChord, is a page that
                 // paints no background of its own. Everywhere a page is not
@@ -457,6 +468,7 @@ class MainActivity : AppCompatActivity() {
                         windowHeight = maxHeight,
                         appBackdrop = appBackdrop,
                     )
+                }
                 }
                 }
             }

@@ -82,6 +82,9 @@ android {
         targetSdk = 36
         versionCode = rootProject.extra["bitchordVersionCode"] as Int
         versionName = rootProject.extra["bitchordVersionName"] as String
+        val ukiyoApiBaseUrl = providers.gradleProperty("ukiyo.apiBaseUrl").orNull
+            ?: "https://api.sagaci.top/api/android/v1"
+        buildConfigField("String", "UKIYO_API_BASE_URL", "\"$ukiyoApiBaseUrl\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
