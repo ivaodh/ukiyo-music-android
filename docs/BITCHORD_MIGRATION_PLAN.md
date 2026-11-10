@@ -213,8 +213,12 @@ Total: roughly 5-8 weeks. Full UI appears in the first few days.
 - [x] Skip BitChord onboarding after Ukiyo login.
 - [x] Disabled BitChord's GitHub update checker.
 - [x] Verified the full BitChord home UI appears after Ukiyo login.
+- [x] Home "Made for you" and "Trending now" now load from the Ukiyo backend.
+- [x] Search results load from the Ukiyo backend.
+- [x] Library uses the Ukiyo backend and no longer shows the Google sign-in wall.
+- [x] BitChord Top Picks, home moods, and YouTube sign-in banner hidden for Ukiyo sessions.
 - [ ] Replace auth with Ukiyo login (data-layer integration remains).
-- [ ] Implement Ukiyo repository adapter.
+- [x] Implement Ukiyo repository adapter first pass (Home, Search, Library).
 - [ ] Add missing backend endpoints.
 - [ ] Implement Ukiyo stream resolver.
 - [ ] Adapt downloads and Android Auto.

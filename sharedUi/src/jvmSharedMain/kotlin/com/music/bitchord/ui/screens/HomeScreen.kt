@@ -83,6 +83,7 @@ import com.music.bitchord.ui.components.SHELF_CARD_WIDTH
 import com.music.bitchord.ui.components.VideoThumbnails
 import com.music.bitchord.ui.components.SearchPlayingBars
 import com.music.bitchord.ui.components.SignInBanner
+import com.music.bitchord.data.ukiyo.UkiyoSession
 import com.music.bitchord.ui.components.feedMoreSkeleton
 import com.music.bitchord.ui.components.feedSkeleton
 import com.music.bitchord.ui.components.recentlyPlayedSkeleton
@@ -192,7 +193,7 @@ fun HomeScreen(
             if (title != null) {
                 item { HomeTitle(title, festiveLogo = festiveLogo, onFestiveLogoClick = onFestiveLogoClick) }
             }
-            if (!signedIn && onSignIn != null) {
+            if (!signedIn && onSignIn != null && !UkiyoSession.isReady) {
                 item {
                     // Read in this item, so a scroll starting or ending
                     // recomposes the banner alone.

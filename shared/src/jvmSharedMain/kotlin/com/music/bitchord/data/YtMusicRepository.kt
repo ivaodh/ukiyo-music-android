@@ -26,6 +26,8 @@ import com.music.bitchord.data.model.UserPlaylist
 import com.music.bitchord.data.model.VersionTimeMap
 import com.music.bitchord.data.model.WatchTarget
 import com.music.bitchord.data.sources.TrackMatcher
+import com.music.bitchord.data.ukiyo.UkiyoBackend
+import com.music.bitchord.data.ukiyo.UkiyoSession
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -80,17 +82,26 @@ object YtMusicRepository {
      * shelves the same way the official app does as you scroll; signed out
      * it's empty and there's nothing more to fetch.
      */
-    suspend fun home(): Result<HomeFeed> = call("home") {
-        val home = Innertube.browse("FEmusic_home")
-        HomeFeed(InnertubeParser.parseHome(home), InnertubeParser.continuationToken(home))
+    suspend fun home(): Result<HomeFeed> {
+        if (UkiyoSession.isReady) return UkiyoBackend.home()
+        return call("home") {
+            val home = Innertube.browse("FEmusic_home")
+            HomeFeed(InnertubeParser.parseHome(home), InnertubeParser.continuationToken(home))
+        }
     }
 
     /** Recently played is rendered independently, at the top of the Play page. */
-    suspend fun homeRecentlyPlayed(): Result<HomeShelf?> = call("home:recent") { recentlyPlayed() }
+    suspend fun homeRecentlyPlayed(): Result<HomeShelf?> {
+        if (UkiyoSession.isReady) return UkiyoBackend.homeRecentlyPlayed()
+        return call("home:recent") { recentlyPlayed() }
+    }
 
     /** Extra Play shelves are independently fetchable so each can appear as soon as it arrives. */
-    suspend fun homeSupplement(browseId: String): Result<List<HomeShelf>> = call("home:$browseId") {
-        shelvesOf(browseId)
+    suspend fun homeSupplement(browseId: String): Result<List<HomeShelf>> {
+        if (UkiyoSession.isReady) return UkiyoBackend.homeSupplement()
+        return call("home:$browseId") {
+            shelvesOf(browseId)
+        }
     }
 
     val HOME_SUPPLEMENT_BROWSE_IDS = listOf(
@@ -104,12 +115,15 @@ object YtMusicRepository {
      * rather than a fixed one-shot page. "Recently played" and
      * FEmusic_new_releases are one-shot and don't participate.
      */
-    suspend fun moreHome(token: String): Result<HomeFeed> = call("home:more") {
-        val response = Innertube.browseContinuation(token)
-        HomeFeed(
-            shelves = InnertubeParser.parseHomeContinuation(response),
-            continuation = InnertubeParser.continuationToken(response),
-        )
+    suspend fun moreHome(token: String): Result<HomeFeed> {
+        if (UkiyoSession.isReady) return UkiyoBackend.moreHome()
+        return call("home:more") {
+            val response = Innertube.browseContinuation(token)
+            HomeFeed(
+                shelves = InnertubeParser.parseHomeContinuation(response),
+                continuation = InnertubeParser.continuationToken(response),
+            )
+        }
     }
 
     /**
@@ -181,15 +195,21 @@ object YtMusicRepository {
      * a shelf on the home page and stops at [RECENT_LIMIT] so it stays a shelf,
      * whereas this is the page you open when twenty is not enough.
      */
-    suspend fun history(): Result<List<Song>> = call("history") { fetchHistory() }
+    suspend fun history(): Result<List<Song>> {
+        if (UkiyoSession.isReady) return UkiyoBackend.history()
+        return call("history") { fetchHistory() }
+    }
 
     /** Account listening history for the Recents feed. */
-    suspend fun recents(): Result<List<Song>> = call("recents") {
-        if (Innertube.cookie != null) {
-            val history = runCatching { fetchHistory() }.getOrDefault(emptyList())
-            if (history.isNotEmpty()) return@call history
+    suspend fun recents(): Result<List<Song>> {
+        if (UkiyoSession.isReady) return UkiyoBackend.history()
+        return call("recents") {
+            if (Innertube.cookie != null) {
+                val history = runCatching { fetchHistory() }.getOrDefault(emptyList())
+                if (history.isNotEmpty()) return@call history
+            }
+            emptyList()
         }
-        emptyList()
     }
 
     /** Removes a track from the account's listening history via its feedback token. */
@@ -300,8 +320,11 @@ object YtMusicRepository {
         InnertubeParser.parseHome(Innertube.browse(browseId))
 
     /** The server-defined mood and genre categories used by Explore. */
-    suspend fun moodAndGenres(): Result<List<MoodGenreSection>> = call("moods-and-genres") {
-        InnertubeParser.parseMoodAndGenres(Innertube.browse("FEmusic_moods_and_genres"))
+    suspend fun moodAndGenres(): Result<List<MoodGenreSection>> {
+        if (UkiyoSession.isReady) return UkiyoBackend.moodAndGenres()
+        return call("moods-and-genres") {
+            InnertubeParser.parseMoodAndGenres(Innertube.browse("FEmusic_moods_and_genres"))
+        }
     }
 
     /**
@@ -310,6 +333,7 @@ object YtMusicRepository {
      * user taps a category whose cover has already appeared.
      */
     suspend fun moodGenreShelves(browseId: String, params: String?): Result<List<HomeShelf>> {
+        if (UkiyoSession.isReady) return UkiyoBackend.moodGenreShelves(browseId)
         val key = "$browseId:${params.orEmpty()}"
         moodGenreShelfCache[key]?.let { return Result.success(it) }
         return call("mood-genre:$browseId") {
@@ -336,8 +360,9 @@ object YtMusicRepository {
      * search responsive; the UI asks [searchContinuation] for later pages as
      * the listener reaches the end of the list.
      */
-    suspend fun searchPage(query: String, filter: SearchFilter, anonymous: Boolean = true): Result<SearchPage> =
-        call("search:${filter.name}") {
+    suspend fun searchPage(query: String, filter: SearchFilter, anonymous: Boolean = true): Result<SearchPage> {
+        if (UkiyoSession.isReady) return UkiyoBackend.searchPage(query, filter.name.lowercase())
+        return call("search:${filter.name}") {
             InnertubeParser.parseSearchPage(
                 Innertube.search(query, filter.params, anonymous),
                 includeVideos = filter == SearchFilter.VIDEOS,
@@ -345,14 +370,18 @@ object YtMusicRepository {
                 SearchPage(page.rows.distinctBy { it.identityKey() }, page.continuation)
             }
         }
+    }
 
     /** Fetches the next page of a search only when the result list needs it. */
-    suspend fun searchContinuation(token: String, filter: SearchFilter): Result<SearchPage> = call("search:continuation") {
-        InnertubeParser.parseSearchPage(
-            Innertube.searchContinuation(token),
-            includeVideos = filter == SearchFilter.VIDEOS,
-        ).let { page ->
-            SearchPage(page.rows.distinctBy { it.identityKey() }, page.continuation)
+    suspend fun searchContinuation(token: String, filter: SearchFilter): Result<SearchPage> {
+        if (UkiyoSession.isReady) return Result.success(SearchPage(emptyList(), null))
+        return call("search:continuation") {
+            InnertubeParser.parseSearchPage(
+                Innertube.searchContinuation(token),
+                includeVideos = filter == SearchFilter.VIDEOS,
+            ).let { page ->
+                SearchPage(page.rows.distinctBy { it.identityKey() }, page.continuation)
+            }
         }
     }
 
@@ -374,10 +403,12 @@ object YtMusicRepository {
      * field's typeahead. Unfiltered on purpose: a suggestion is a query, and
      * which tab it is then run against is the user's to pick afterwards.
      */
-    suspend fun searchSuggestions(input: String): Result<List<String>> =
-        call("suggest") {
+    suspend fun searchSuggestions(input: String): Result<List<String>> {
+        if (UkiyoSession.isReady) return UkiyoBackend.searchSuggestions()
+        return call("suggest") {
             InnertubeParser.parseSearchSuggestions(Innertube.searchSuggestions(input))
         }
+    }
 
     /**
      * Live media results for the typeahead phase — a lightweight search that
@@ -391,8 +422,9 @@ object YtMusicRepository {
      * IME Search / tapping a suggestion) still use the normal authenticated
      * [searchPage] path and are recorded properly.
      */
-    suspend fun searchTypeahead(input: String): Result<SearchPage> =
-        call("typeahead:$input") {
+    suspend fun searchTypeahead(input: String): Result<SearchPage> {
+        if (UkiyoSession.isReady) return UkiyoBackend.searchPage(input, "songs")
+        return call("typeahead:$input") {
             InnertubeParser.parseSearchPage(
                 Innertube.searchTypeahead(input),
                 includeVideos = false,
@@ -400,6 +432,7 @@ object YtMusicRepository {
                 SearchPage(page.rows.distinctBy { it.identityKey() }, page.continuation)
             }
         }
+    }
 
     /**
      * The catalogue (audio-only) release of a music-video upload: YouTube
@@ -432,6 +465,7 @@ object YtMusicRepository {
      * without a second check.
      */
     suspend fun resolveAudio(song: Song): Song {
+        if (UkiyoSession.isReady) return song
         if (!song.isVideo) return song
         audioVersionCache[song.videoId]?.let { return it }
         officialVersion(song, wantAudio = true)?.let { audio ->
@@ -475,6 +509,7 @@ object YtMusicRepository {
      * for a catalogue track. Returns null when no video version is found.
      */
     suspend fun resolveVideo(song: Song): Song? {
+        if (UkiyoSession.isReady) return null
         if (song.isVideo) return null
         videoVersionCache[song.videoId]?.let { return it }
         officialVersion(song, wantAudio = false)?.let { video ->
@@ -569,7 +604,9 @@ object YtMusicRepository {
      * parallel and a feed that fails or is simply empty (a fresh account has
      * no saved albums) is dropped rather than failing the whole page.
      */
-    suspend fun library(): Result<LibraryPage> = call("library") {
+    suspend fun library(): Result<LibraryPage> {
+        if (UkiyoSession.isReady) return UkiyoBackend.library()
+        return call("library") {
         coroutineScope {
             // Liked Music is read one page at a time. The first page is what
             // the Library tab needs to fill and is published straight away;
@@ -602,6 +639,7 @@ object YtMusicRepository {
                 likedContinuation = likedPage?.continuation,
             )
         }
+    }
     }
 
     /**
@@ -1025,8 +1063,11 @@ object YtMusicRepository {
      * playlist collections otherwise lose everything past YouTube's first
      * library-feed response.
      */
-    suspend fun userPlaylists(): Result<List<UserPlaylist>> = call("playlists") {
-        InnertubeParser.parseUserPlaylists(libraryItemsPaged(LIBRARY_PLAYLISTS))
+    suspend fun userPlaylists(): Result<List<UserPlaylist>> {
+        if (UkiyoSession.isReady) return UkiyoBackend.userPlaylists()
+        return call("playlists") {
+            InnertubeParser.parseUserPlaylists(libraryItemsPaged(LIBRARY_PLAYLISTS))
+        }
     }
 
     /**

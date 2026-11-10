@@ -1,0 +1,350 @@
+package com.music.bitchord.data.ukiyo
+
+import com.music.bitchord.data.Http
+import com.music.bitchord.data.YtMusicRepository
+import com.music.bitchord.data.model.BrowseItem
+import com.music.bitchord.data.model.BrowseType
+import com.music.bitchord.data.model.HomeFeed
+import com.music.bitchord.data.model.HomeShelf
+import com.music.bitchord.data.model.LibraryPage
+import com.music.bitchord.data.model.MoodGenre
+import com.music.bitchord.data.model.MoodGenreSection
+import com.music.bitchord.data.model.SearchResult
+import com.music.bitchord.data.model.ShelfItem
+import com.music.bitchord.data.model.ShelfLayout
+import com.music.bitchord.data.model.Song
+import com.music.bitchord.data.model.UserPlaylist
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import okhttp3.Request
+import java.util.Locale
+
+@Serializable
+private data class UkiyoTrack(
+    val id: String? = null,
+    @SerialName("track_key") val trackKey: String? = null,
+    val title: String? = null,
+    val artist: String? = null,
+    val album: String? = null,
+    @SerialName("duration_ms") val durationMsSnake: Long? = null,
+    @SerialName("durationMs") val durationMsCamel: Long? = null,
+    @SerialName("thumbnail_url") val thumbnailUrlSnake: String? = null,
+    @SerialName("thumbnailUrl") val thumbnailUrlCamel: String? = null,
+    @SerialName("video_id") val videoIdSnake: String? = null,
+    @SerialName("videoId") val videoIdCamel: String? = null,
+    val name: String? = null,
+    val type: String? = null,
+)
+
+@Serializable
+private data class UkiyoTrackList(val tracks: List<UkiyoTrack> = emptyList())
+
+@Serializable
+private data class UkiyoFeedPlaylist(
+    val id: String? = null,
+    val title: String? = null,
+    val subtitle: String? = null,
+    @SerialName("thumbnailUrl") val thumbnailUrl: String? = null,
+    val category: String? = null,
+)
+
+@Serializable
+private data class UkiyoHomeFeed(
+    val playlists: List<UkiyoFeedPlaylist> = emptyList(),
+    val region: String? = null,
+)
+
+@Serializable
+private data class UkiyoPlaylist(
+    val id: String? = null,
+    val name: String? = null,
+    @SerialName("trackThumbnails") val trackThumbnails: List<String> = emptyList(),
+)
+
+@Serializable
+private data class UkiyoPlaylistResponse(val playlists: List<UkiyoPlaylist> = emptyList())
+
+@Serializable
+private data class UkiyoSearch(
+    @SerialName("topResult") val topResult: UkiyoTrack? = null,
+    val songs: List<UkiyoTrack> = emptyList(),
+    val artists: List<UkiyoTrack> = emptyList(),
+    val albums: List<UkiyoTrack> = emptyList(),
+    val playlists: List<UkiyoTrack> = emptyList(),
+    val continuation: String? = null,
+)
+
+private val json = Json { ignoreUnknownKeys = true }
+
+object UkiyoBackend {
+
+    suspend fun home(): Result<HomeFeed> = runCatching {
+        requireReady()
+        val history = get<UkiyoTrackList>("/library/history?limit=20").tracks
+        val liked = get<UkiyoTrackList>("/library/liked-songs?limit=50").tracks
+        val playlists = get<UkiyoPlaylistResponse>("/playlists").playlists
+        val feed = get<UkiyoHomeFeed>("/home-feed").playlists
+        val charts = get<UkiyoTrackList>("/charts").tracks
+
+        val shelves = buildList {
+            if (history.isNotEmpty()) {
+                add(
+                    HomeShelf(
+                        title = YtMusicRepository.RECENT_TITLE,
+                        items = history.map { it.toShelfItem() },
+                        layout = ShelfLayout.LIST,
+                    )
+                )
+            }
+            if (liked.isNotEmpty()) {
+                add(
+                    HomeShelf(
+                        title = "Liked songs",
+                        items = liked.map { it.toShelfItem() },
+                        layout = ShelfLayout.LIST,
+                    )
+                )
+            }
+            if (playlists.isNotEmpty()) {
+                add(
+                    HomeShelf(
+                        title = "Your playlists",
+                        items = playlists.map { it.toShelfItem() },
+                        layout = ShelfLayout.CARDS,
+                    )
+                )
+            }
+            val madeForYou = feed.map { it.toShelfItem() }
+            if (madeForYou.isNotEmpty()) {
+                add(HomeShelf(title = "Made for you", items = madeForYou, layout = ShelfLayout.CARDS))
+            }
+            if (charts.isNotEmpty()) {
+                add(
+                    HomeShelf(
+                        title = "Trending now",
+                        items = charts.map { it.toShelfItem() },
+                        layout = ShelfLayout.LIST,
+                    )
+                )
+            }
+        }
+        HomeFeed(shelves = shelves, continuation = null)
+    }
+
+    suspend fun homeRecentlyPlayed(): Result<HomeShelf?> = runCatching {
+        requireReady()
+        val history = get<UkiyoTrackList>("/library/history?limit=20").tracks
+        if (history.isEmpty()) null
+        else HomeShelf(
+            title = YtMusicRepository.RECENT_TITLE,
+            items = history.map { it.toShelfItem() },
+            layout = ShelfLayout.LIST,
+        )
+    }
+
+    suspend fun homeSupplement(): Result<List<HomeShelf>> = Result.success(emptyList())
+
+    suspend fun moreHome(): Result<HomeFeed> = Result.success(HomeFeed(emptyList(), null))
+
+    suspend fun searchPage(query: String, filter: String): Result<YtMusicRepository.SearchPage> = runCatching {
+        requireReady()
+        val result = get<UkiyoSearch>(
+            "/search?q=${encode(query)}&filter=${encode(filter)}"
+        )
+        val rows = buildList {
+            result.topResult?.let { add(SearchResult.TopTrack(it.toSong())) }
+            result.songs.forEach { add(SearchResult.Track(it.toSong())) }
+            result.artists.forEach {
+                add(SearchResult.Browse(it.toBrowseItem(BrowseType.ARTIST, "Artist")))
+            }
+            result.albums.forEach {
+                add(SearchResult.Browse(it.toBrowseItem(BrowseType.ALBUM, "Album")))
+            }
+            result.playlists.forEach {
+                add(SearchResult.Browse(it.toBrowseItem(BrowseType.PLAYLIST, "Playlist")))
+            }
+        }.distinctBy { row ->
+            when (row) {
+                is SearchResult.TopTrack -> "v:${row.song.videoId}"
+                is SearchResult.Track -> "v:${row.song.videoId}"
+                is SearchResult.Browse -> "b:${row.item.browseId}"
+            }
+        }
+        YtMusicRepository.SearchPage(rows = rows, continuation = null)
+    }
+
+    suspend fun searchSuggestions(): Result<List<String>> = Result.success(emptyList())
+
+    suspend fun library(): Result<LibraryPage> = runCatching {
+        requireReady()
+        val liked = get<UkiyoTrackList>("/library/liked-songs?limit=100").tracks.map { it.toSong() }
+        val playlists = get<UkiyoPlaylistResponse>("/playlists").playlists
+        val shelves = if (playlists.isEmpty()) emptyList() else listOf(
+            HomeShelf(
+                title = "Your playlists",
+                items = playlists.map { it.toShelfItem() },
+                layout = ShelfLayout.CARDS,
+            )
+        )
+        LibraryPage(likedSongs = liked, librarySongs = liked, shelves = shelves)
+    }
+
+    suspend fun history(): Result<List<Song>> = runCatching {
+        requireReady()
+        get<UkiyoTrackList>("/library/history?limit=100").tracks.map { it.toSong() }
+    }
+
+    suspend fun userPlaylists(): Result<List<UserPlaylist>> = runCatching {
+        requireReady()
+        get<UkiyoPlaylistResponse>("/playlists").playlists.map {
+            UserPlaylist(
+                playlistId = it.id.orEmpty(),
+                title = it.name ?: "Playlist",
+                subtitle = "Playlist",
+                thumbnailUrl = it.trackThumbnails.firstOrNull(),
+            )
+        }
+    }
+
+    suspend fun quickPicks(): Result<List<Song>> = runCatching {
+        requireReady()
+        val history = get<UkiyoTrackList>("/library/history?limit=8").tracks
+        val liked = get<UkiyoTrackList>("/library/liked-songs?limit=8").tracks
+        (history + liked).distinctBy { it.trackKey ?: it.id }.take(10).map { it.toSong() }
+    }
+
+    suspend fun moodAndGenres(): Result<List<MoodGenreSection>> = Result.success(
+        listOf(
+            MoodGenreSection(
+                title = "Moods & genres",
+                items = listOf(
+                    "Bollywood",
+                    "Punjabi",
+                    "Hindi",
+                    "English",
+                    "Romance",
+                    "Chill",
+                    "Party",
+                ).map { name ->
+                    MoodGenre(
+                        title = name,
+                        browseId = "ukiyo:search:$name",
+                        params = null,
+                        thumbnailUrl = null,
+                    )
+                },
+            )
+        )
+    )
+
+    suspend fun moodGenreShelves(browseId: String): Result<List<HomeShelf>> = runCatching {
+        val query = browseId.substringAfterLast(':')
+        val result = searchPage(query, "songs")
+        val rows = result.getOrThrow().rows.filterIsInstance<SearchResult.Track>().map { it.song }
+        if (rows.isEmpty()) emptyList()
+        else listOf(
+            HomeShelf(
+                title = query,
+                items = rows.map { it.toShelfItem() },
+                layout = ShelfLayout.CARDS,
+            )
+        )
+    }
+
+    private suspend inline fun <reified T> get(path: String): T {
+        val request = Request.Builder()
+            .url("${UkiyoSession.baseUrl.trimEnd('/')}$path")
+            .header("Accept", "application/json")
+            .apply {
+                UkiyoSession.token?.let { header("Authorization", "Bearer $it") }
+                UkiyoSession.deviceFingerprint?.let { header("X-Ukiyo-Device", it) }
+            }
+            .build()
+
+        return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+            val call = Http.client.newCall(request)
+            cont.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : okhttp3.Callback {
+                override fun onFailure(call: okhttp3.Call, e: java.io.IOException) {
+                    if (cont.isActive) cont.resumeWith(Result.failure(e))
+                }
+
+                override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                    response.use {
+                        val text = it.body.string()
+                        if (!it.isSuccessful) {
+                            if (cont.isActive) cont.resumeWith(
+                                Result.failure(IllegalStateException("Ukiyo API ${it.code}: $text"))
+                            )
+                            return
+                        }
+                        val parsed = runCatching { json.decodeFromString<T>(text) }
+                        if (cont.isActive) cont.resumeWith(parsed)
+                    }
+                }
+            })
+        }
+    }
+
+    private fun requireReady() {
+        check(UkiyoSession.isReady) { "Ukiyo session is not ready" }
+    }
+
+    private fun encode(value: String): String = java.net.URLEncoder.encode(value, "UTF-8")
+
+    private fun UkiyoTrack.toSong(): Song {
+        val resolvedArtist = artist ?: "Unknown Artist"
+        val resolvedTitle = title ?: name ?: "Unknown Track"
+        val durationMs = durationMsCamel ?: durationMsSnake
+        val id = videoIdCamel ?: videoIdSnake ?: trackKey ?: id ?: "$resolvedArtist|$resolvedTitle"
+        return Song(
+            videoId = id,
+            title = resolvedTitle,
+            artist = resolvedArtist,
+            thumbnailUrl = thumbnailUrlCamel ?: thumbnailUrlSnake,
+            durationText = durationMs?.let(::formatDuration),
+            albumName = album,
+        )
+    }
+
+    private fun UkiyoTrack.toShelfItem(): ShelfItem = toSong().toShelfItem()
+
+    private fun Song.toShelfItem(): ShelfItem = ShelfItem(
+        title = title,
+        subtitle = artist,
+        thumbnailUrl = thumbnailUrl,
+        videoId = videoId,
+        browseId = null,
+    )
+
+    private fun UkiyoPlaylist.toShelfItem(): ShelfItem = ShelfItem(
+        title = name ?: "Playlist",
+        subtitle = "Playlist",
+        thumbnailUrl = trackThumbnails.firstOrNull(),
+        videoId = null,
+        browseId = "ukiyo:playlist:${id.orEmpty()}",
+    )
+
+    private fun UkiyoFeedPlaylist.toShelfItem(): ShelfItem = ShelfItem(
+        title = title ?: "Playlist",
+        subtitle = subtitle ?: category.orEmpty(),
+        thumbnailUrl = thumbnailUrl,
+        videoId = null,
+        browseId = "ukiyo:feed:${id.orEmpty()}",
+    )
+
+    private fun UkiyoTrack.toBrowseItem(type: BrowseType, subtitle: String): BrowseItem = BrowseItem(
+        browseId = "ukiyo:${type.name.lowercase()}:${id ?: trackKey.orEmpty()}",
+        title = title ?: name ?: "Unknown",
+        subtitle = subtitle,
+        thumbnailUrl = thumbnailUrlCamel ?: thumbnailUrlSnake,
+        type = type,
+    )
+
+    private fun formatDuration(ms: Long): String {
+        if (ms <= 0) return ""
+        val total = ms / 1000
+        return String.format(Locale.US, "%d:%02d", total / 60, total % 60)
+    }
+}

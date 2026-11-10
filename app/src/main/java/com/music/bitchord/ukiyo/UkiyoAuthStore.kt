@@ -5,6 +5,9 @@ import android.os.Build
 import android.provider.Settings
 import com.music.bitchord.BuildConfig
 import com.music.bitchord.auth.EncryptedPrefs
+import com.music.bitchord.auth.SignedIn
+import com.music.bitchord.data.ukiyo.UkiyoSession
+import com.music.bitchord.data.settings.AppSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -52,6 +55,16 @@ class UkiyoAuthStore(context: Context) {
     private val prefs = EncryptedPrefs.open(appContext, "ukiyo_auth", "ukiyo_auth_plain")
     private val client = OkHttpClient()
     private val json = Json { ignoreUnknownKeys = true }
+
+    init {
+        UkiyoSession.baseUrl = BuildConfig.UKIYO_API_BASE_URL
+        UkiyoSession.token = accessToken
+        UkiyoSession.deviceFingerprint = deviceFingerprint
+        if (isLoggedIn) {
+            SignedIn.state(appContext).value = true
+            applyUkiyoContentSettings()
+        }
+    }
 
     var accessToken: String?
         get() = prefs.getString(KEY_ACCESS, null)
@@ -105,6 +118,10 @@ class UkiyoAuthStore(context: Context) {
             refreshToken = refresh
             this@UkiyoAuthStore.email = userEmail
             deviceFingerprint = fingerprint
+            UkiyoSession.token = token
+            UkiyoSession.deviceFingerprint = fingerprint
+            SignedIn.state(appContext).value = true
+            applyUkiyoContentSettings()
             null
         }
     }
@@ -115,6 +132,8 @@ class UkiyoAuthStore(context: Context) {
             .remove(KEY_REFRESH)
             .remove(KEY_EMAIL)
             .apply()
+        UkiyoSession.token = null
+        SignedIn.state(appContext).value = false
     }
 
     fun authHeader(): String? = accessToken?.let { "Bearer $it" }
@@ -145,6 +164,12 @@ class UkiyoAuthStore(context: Context) {
             if (it.isSuccessful && parsed?.ok == true) return null
             return parsed?.message ?: parsed?.error ?: "Device registration failed (${it.code})"
         }
+    }
+
+    private fun applyUkiyoContentSettings() {
+        AppSettings.setOnboardingComplete()
+        AppSettings.setHideTopPicks(true)
+        AppSettings.setHideHomeMoods(true)
     }
 
     private fun buildFingerprint(context: Context): String {
