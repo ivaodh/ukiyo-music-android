@@ -4,7 +4,7 @@
 - Pinned commit: `acf219a7e4a7f52f026d4336d5c7ac5cf7bfafcc`
 - License: GPLv3
 
-## Planned UI reuse
+## Imported UI
 
 - Haze glass effect and frosted surfaces.
 - MeshGradient artwork backdrop.
@@ -16,7 +16,7 @@
 
 ## Integration rules
 
-- The Android application is GPLv3.
+- The Android application is GPLv3 and includes BitChord Android source at the pinned commit.
 - The backend is a separate private program reached over HTTP.
 - No BitChord code is copied into the backend.
 - BitChord branding and trademarks are not used.

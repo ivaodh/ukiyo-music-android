@@ -201,12 +201,14 @@ Total: roughly 5-8 weeks. Full UI appears in the first few days.
 
 - [x] Decide on a full BitChord fork instead of incremental redesign.
 - [x] Save this plan in the public app repo.
-- [ ] Create `bit-chord-base` branch.
-- [ ] Import BitChord Android modules.
-- [ ] Strip BitChord server/TV/Wear/web/desktop modules.
-- [ ] Set application ID to `app.ukiyo.music`.
-- [ ] Build the full BitChord UI.
-- [ ] Install and screenshot on emulator.
+- [x] Create `bit-chord-base` branch.
+- [x] Import BitChord Android modules.
+- [x] Strip BitChord server/TV/Wear/web/desktop modules.
+- [x] Set application ID to `app.ukiyo.music`.
+- [x] Build the full BitChord UI (`app-prod-x86_64-debug.apk`).
+- [x] Install and screenshot on emulator. BitChord onboarding screen renders.
+- [x] Remove Apple SF Pro fonts and BitChord ONNX analysis models from the public tree for licensing/size; use platform sans for now.
+- [x] Build after font/model removal.
 - [ ] Replace auth with Ukiyo login.
 - [ ] Implement Ukiyo repository adapter.
 - [ ] Add missing backend endpoints.

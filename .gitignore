@@ -11,3 +11,22 @@ captures/
 .cxx/
 app/release/
 app/debug/
+
+# BitChord upstream
+.vscode/
+gradle-app.setting
+.kotlin/
+.navigation/
+*.hprof
+*.log
+Thumbs.db
+*.jks
+*.keystore
+.shots/
+.tmp_verify/
+.debug/
+AGENTS.md
+/output/
+*.apk
+*.aab
+.claude/

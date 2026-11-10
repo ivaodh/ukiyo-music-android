@@ -1,14 +1,18 @@
 # Ukiyo Music Android
 
-Native Kotlin client for Ukiyo Music.
+BitChord-based Android client for Ukiyo Music.
+
+> This is the `bit-chord-base` migration branch. It currently builds the complete BitChord UI with BitChord authentication, data, and stream resolution. The Ukiyo backend integration is in progress. Do not upload this branch to Play yet.
+
+The previous native Ukiyo app remains on `main` at v1.0.1.
 
 - Application ID: `app.ukiyo.music`
 - App name: Ukiyo Music
-- Min SDK: 28
+- Min SDK: 26
 - Compile SDK: 37
 - Target SDK: 36
-- UI: Jetpack Compose with Haze glass and a BitChord-derived visual foundation
-- Playback: Media3 ExoPlayer + MediaSession + MediaLibraryService
+- UI: full BitChord Compose UI, being adapted to Ukiyo
+- Playback: BitChord Media3 player, queue, crossfade, canvas, and Android Auto
 - Android Auto: media library and playback service
 - Offline: Room + WorkManager, 5 GB cap
 - No admin screens
@@ -42,13 +46,13 @@ Use Android Studio's JBR or any JDK 17+.
 
 ```bash
 export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
-./gradlew :app:assembleDebug
+./gradlew :app:assembleProdDebug
 ```
 
 The debug APK is at:
 
 ```
-app/build/outputs/apk/debug/app-debug.apk
+app/build/outputs/apk/prod/debug/app-prod-x86_64-debug.apk
 ```
 
 ### Emulator against local backend
@@ -63,7 +67,7 @@ node server.js
 Build with the emulator loopback address:
 
 ```bash
-./gradlew :app:assembleDebug -Pukiyo.apiBaseUrl=http://10.0.2.2:3008/api/android/v1
+./gradlew :app:assembleProdDebug -Pukiyo.apiBaseUrl=http://10.0.2.2:3008/api/android/v1
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
@@ -72,7 +76,7 @@ The debug manifest allows cleartext traffic. Release builds do not.
 ### Production debug build
 
 ```bash
-./gradlew :app:assembleDebug
+./gradlew :app:assembleProdDebug
 ```
 
 The default API base URL is `https://api.sagaci.top/api/android/v1`.
@@ -96,20 +100,20 @@ Both are gitignored. Move them to a safe place before publishing and keep a secu
 Release build:
 
 ```bash
-./gradlew :app:bundleRelease
+./gradlew :app:bundleProdRelease
 ```
 
 Output:
 
 ```
-app/build/outputs/bundle/release/app-release.aab
+app/build/outputs/bundle/prodRelease/app-prod-release.aab
 ```
 
 ### Direct phone testing without Play
 
 ```bash
-./gradlew :app:assembleRelease
-adb install -r app/build/outputs/apk/release/app-release.apk
+./gradlew :app:assembleProdRelease
+adb install -r app/build/outputs/apk/prod/release/app-prod-release.apk
 ```
 
 The release APK is signed with the upload key. Uninstall it before installing the Play-distributed build, because Play App Signing uses a different signing key.

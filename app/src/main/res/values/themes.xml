@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.UkiyoMusic" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/ukiyo_black</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
-        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    <!-- Compose owns all theming; this just gives an edge-to-edge, action-bar-free window. -->
+    <style name="Theme.BitChord" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
     </style>
 </resources>
