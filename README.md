@@ -10,11 +10,10 @@ Current test artifacts on `bit-chord-base`:
 
 ```
 app/build/outputs/bundle/prodRelease/app-prod-release.aab
-app/build/outputs/apk/prod/release/app-prod-arm64-v8a-release.apk
-app/build/outputs/apk/prod/release/app-prod-universal-release.apk
+app/build/outputs/apk/prod/release/app-prod-release.apk
 ```
 
-Version: `1.1.0` (`versionCode 3`).
+Version: `1.2.0` (`versionCode 4`).
 
 - Application ID: `app.ukiyo.music`
 - App name: Ukiyo Music

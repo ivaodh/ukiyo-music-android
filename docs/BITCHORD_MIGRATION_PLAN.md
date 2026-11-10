@@ -220,7 +220,7 @@ Total: roughly 5-8 weeks. Full UI appears in the first few days.
 - [x] Playback resolves through the Ukiyo backend and the BitChord player plays it.
 - [x] Verified mini player, track row playing indicator, and background MediaSession with Ukiyo streams.
 - [x] Fixed AAB bundling with AGP 8.9+ ABI-split bug.
-- [x] Built signed release AAB `app-prod-release.aab` (versionCode 3, versionName 1.1.0).
+- [x] Built signed release AAB `app-prod-release.aab` (versionCode 4, versionName 1.2.0).
 - [x] Built release APKs for arm64, armv7, x86_64, and universal.
 - [x] Verified Ukiyo FLAC quality reaches the backend (`quality=eq`) and resolves through NetEase.
 - [x] Verified Explore category pages now show songs, albums, and artists shelves.
@@ -247,10 +247,11 @@ Total: roughly 5-8 weeks. Full UI appears in the first few days.
 - [ ] Rebrand the remaining settings pages, integrations, and artwork.
 - [ ] Verify no provider URLs in APK.
 - [ ] Build release AAB and upload for internal testing.
-- [x] Rebuilt signed release artifacts after Ukiyo details/downloads (versionCode 3, versionName 1.1.0).
+- [x] Rebuilt signed release artifacts after Ukiyo details/downloads (versionCode 4, versionName 1.2.0).
   - AAB: `app/build/outputs/bundle/prodRelease/app-prod-release.aab`
-  - SHA-256: `bd4e6bcf06739c777f01f39eb1c2842ad957f04e62d9357948a075d0a4ad3acc`
+  - AAB SHA-256: `1800f749715d467688c4d359ff17e166a1a74f87f196ddbc0764912f93720c92`
   - Universal APK: `app/build/outputs/apk/prod/release/app-prod-release.apk`
+  - APK SHA-256: `81f8cb15140b294c405c30e18e2aa1a9e7907b8838a88d9aa9c63fcf9dabf44b`
 - [ ] Deploy the private backend artist-shelf parser fix after unlocking the SSH key passphrase.
 
 ## Build commands
