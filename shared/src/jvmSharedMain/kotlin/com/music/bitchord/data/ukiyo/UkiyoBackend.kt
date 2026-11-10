@@ -606,7 +606,9 @@ object UkiyoBackend {
 
     private fun UkiyoFeedPlaylist.toShelfItem(): ShelfItem = ShelfItem(
         title = title ?: "Playlist",
-        subtitle = subtitle ?: category.orEmpty(),
+        subtitle = (subtitle ?: category.orEmpty())
+            .replace("YouTube Charts", "Charts")
+            .replace("YouTube Music", "Ukiyo Music"),
         thumbnailUrl = thumbnailUrl,
         videoId = null,
         browseId = "ukiyo:feed:${id.orEmpty()}",

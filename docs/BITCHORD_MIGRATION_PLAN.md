@@ -241,8 +241,10 @@ Total: roughly 5-8 weeks. Full UI appears in the first few days.
 - [ ] Adapt Android Auto browse and playback verification.
 - [ ] Deploy the private backend artist-shelf parser fix (blocked on SSH key passphrase).
 - [ ] Remove provider code and dependencies. The current branch still contains BitChord's Innertube/NewPipe/JioSaavn provider code because it was needed to make the full UI build. Playback no longer uses it for normal Ukiyo tracks, but it must be removed before the backend can be considered hidden.
-- [ ] Hide unsupported integrations.
-- [ ] Rebrand UI.
+- [x] Hide the old source/addon and Wi-Fi/cellular quality rows from Ukiyo settings.
+- [ ] Hide or replace the remaining Spotify/Discord/Last.fm/addon entry points.
+- [x] Rename the remaining user-facing YouTube/BitChord copy in core playback, search, library, widget, and settings strings.
+- [ ] Rebrand the remaining settings pages, integrations, and artwork.
 - [ ] Verify no provider URLs in APK.
 - [ ] Build release AAB and upload for internal testing.
 

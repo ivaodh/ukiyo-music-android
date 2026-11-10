@@ -158,6 +158,7 @@ import com.music.bitchord.data.NerdStats
 import com.music.bitchord.data.scrobbling.LastFM
 import com.music.bitchord.data.listentogether.ListenTogether
 import com.music.bitchord.data.settings.AppSettings
+import com.music.bitchord.data.ukiyo.UkiyoSession
 import com.music.bitchord.data.settings.OutputPcmMode
 import com.music.bitchord.data.settings.BitPerfectMode
 import com.music.bitchord.playback.AudioOutputStatus
@@ -508,51 +509,55 @@ fun SettingsScreen(
             // longer a setting at all — see
             // [SourceResolver.requestForNow][com.music.bitchord.data.sources.SourceResolver.requestForNow].
             SearchableSettingsGroup(search, header = stringResource(R.string.audio_quality)) {
-                val sourceTitle = stringResource(R.string.source)
-                val sourceSubtitle = stringResource(R.string.sources_subtitle)
-                row(sourceTitle, sourceSubtitle, "addon", "lossless") {
-                    SettingsRow(
-                        icon = SfIcons.Extension,
-                        title = sourceTitle,
-                        subtitle = sourceSubtitle,
-                        onClick = onSources,
-                    )
-                }
-                // One line on purpose: it qualifies the row above rather than
-                // being a setting of its own, so it reads as part of Sources.
-                val directSourceTitle = stringResource(R.string.direct_source_stream)
-                // Drawn like the animated-cover cellular line: no icon, no divider.
-                row(directSourceTitle, "addon", "direct", "prefetch", "read-ahead", divided = false) {
-                    // Off for the length of a party: holding every fetch until a
-                    // track is about to play would leave this phone behind the
-                    // others at each sync — see [DirectSourceGate.isActive].
-                    SettingsSubRow(
-                        title = directSourceTitle,
-                        checked = directSourceStream && !party.inParty,
-                        onCheckedChange = AppSettings::setDirectSourceStream,
-                        subtitle = stringResource(R.string.direct_source_stream_in_party).takeIf { party.inParty },
-                        enabled = !party.inParty,
-                    )
-                }
-                val onWifiTitle = stringResource(R.string.on_wifi)
-                row(onWifiTitle, "wi-fi", "streaming quality") {
-                    SettingsRow(
-                        icon = SfIcons.Wifi,
-                        title = onWifiTitle,
-                        badge = stringResource(R.string.in_use).takeIf { metered == false },
-                        value = wifiQuality.localizedLabel(),
-                        onClick = { onOpenChoice(SettingsChoiceKind.AUDIO_QUALITY_WIFI) },
-                    )
-                }
-                val onMobileDataTitle = stringResource(R.string.on_mobile_data)
-                row(onMobileDataTitle, "cellular", "streaming quality") {
-                    SettingsRow(
-                        icon = SfIcons.SignalCellularAlt,
-                        title = onMobileDataTitle,
-                        badge = stringResource(R.string.in_use).takeIf { metered == true },
-                        value = cellularQuality.localizedLabel(),
-                        onClick = { onOpenChoice(SettingsChoiceKind.AUDIO_QUALITY_CELLULAR) },
-                    )
+                // Ukiyo has one backend and one quality setting. The old
+                // source/YouTube ladder is kept only for the fallback build.
+                if (!UkiyoSession.isReady) {
+                    val sourceTitle = stringResource(R.string.source)
+                    val sourceSubtitle = stringResource(R.string.sources_subtitle)
+                    row(sourceTitle, sourceSubtitle, "addon", "lossless") {
+                        SettingsRow(
+                            icon = SfIcons.Extension,
+                            title = sourceTitle,
+                            subtitle = sourceSubtitle,
+                            onClick = onSources,
+                        )
+                    }
+                    // One line on purpose: it qualifies the row above rather than
+                    // being a setting of its own, so it reads as part of Sources.
+                    val directSourceTitle = stringResource(R.string.direct_source_stream)
+                    // Drawn like the animated-cover cellular line: no icon, no divider.
+                    row(directSourceTitle, "addon", "direct", "prefetch", "read-ahead", divided = false) {
+                        // Off for the length of a party: holding every fetch until a
+                        // track is about to play would leave this phone behind the
+                        // others at each sync — see [DirectSourceGate.isActive].
+                        SettingsSubRow(
+                            title = directSourceTitle,
+                            checked = directSourceStream && !party.inParty,
+                            onCheckedChange = AppSettings::setDirectSourceStream,
+                            subtitle = stringResource(R.string.direct_source_stream_in_party).takeIf { party.inParty },
+                            enabled = !party.inParty,
+                        )
+                    }
+                    val onWifiTitle = stringResource(R.string.on_wifi)
+                    row(onWifiTitle, "wi-fi", "streaming quality") {
+                        SettingsRow(
+                            icon = SfIcons.Wifi,
+                            title = onWifiTitle,
+                            badge = stringResource(R.string.in_use).takeIf { metered == false },
+                            value = wifiQuality.localizedLabel(),
+                            onClick = { onOpenChoice(SettingsChoiceKind.AUDIO_QUALITY_WIFI) },
+                        )
+                    }
+                    val onMobileDataTitle = stringResource(R.string.on_mobile_data)
+                    row(onMobileDataTitle, "cellular", "streaming quality") {
+                        SettingsRow(
+                            icon = SfIcons.SignalCellularAlt,
+                            title = onMobileDataTitle,
+                            badge = stringResource(R.string.in_use).takeIf { metered == true },
+                            value = cellularQuality.localizedLabel(),
+                            onClick = { onOpenChoice(SettingsChoiceKind.AUDIO_QUALITY_CELLULAR) },
+                        )
+                    }
                 }
                 val ukiyoQualityTitle = stringResource(R.string.ukiyo_quality)
                 row(ukiyoQualityTitle, "eq+", "flac", "aac", "streaming quality") {
