@@ -219,13 +219,16 @@ Total: roughly 5-8 weeks. Full UI appears in the first few days.
 - [x] BitChord Top Picks, home moods, and YouTube sign-in banner hidden for Ukiyo sessions.
 - [x] Playback resolves through the Ukiyo backend and the BitChord player plays it.
 - [x] Verified mini player, track row playing indicator, and background MediaSession with Ukiyo streams.
+- [x] Fixed AAB bundling with AGP 8.9+ ABI-split bug.
+- [x] Built signed release AAB `app-prod-release.aab` (versionCode 3, versionName 1.1.0).
+- [x] Built release APKs for arm64, armv7, x86_64, and universal.
 - [ ] Android Auto and downloads still need Ukiyo resolver verification.
 - [ ] Replace auth with Ukiyo login (data-layer integration remains).
 - [x] Implement Ukiyo repository adapter first pass (Home, Search, Library).
 - [ ] Add missing backend endpoints.
 - [x] Implement Ukiyo stream resolver through `ukiyo://watch` and signed `/play` URLs.
 - [ ] Adapt downloads and Android Auto.
-- [ ] Remove provider code and dependencies.
+- [ ] Remove provider code and dependencies. The current branch still contains BitChord's Innertube/NewPipe/JioSaavn provider code because it was needed to make the full UI build. Playback no longer uses it for normal Ukiyo tracks, but it must be removed before the backend can be considered hidden.
 - [ ] Hide unsupported integrations.
 - [ ] Rebrand UI.
 - [ ] Verify no provider URLs in APK.

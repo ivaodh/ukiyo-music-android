@@ -104,12 +104,15 @@ android {
         // Which release assets are this app's: the phone and TV APKs ship in
         // the same GitHub release, told apart by file name. See
         // AppUpdateChecker.apkAssetUrl.
-        buildConfigField("String", "UPDATE_APK_PREFIX", "\"BitChord-\"")
+        buildConfigField("String", "UPDATE_APK_PREFIX", "\"Ukiyo-\"")
     }
 
     splits {
         abi {
-            isEnable = true
+            // AGP 8.9+ fails AAB bundling when ABI splits are enabled.
+            // Keep APK splits for GitHub/sideload builds, disable for bundles.
+            val isBuildingBundle = gradle.startParameter.taskNames.any { it.lowercase().contains("bundle") }
+            isEnable = !isBuildingBundle
             reset()
             include("armeabi-v7a", "arm64-v8a", "x86_64")
             isUniversalApk = true

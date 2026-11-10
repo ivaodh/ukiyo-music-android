@@ -6,6 +6,16 @@ BitChord-based Android client for Ukiyo Music.
 
 The previous native Ukiyo app remains on `main` at v1.0.1.
 
+Current test artifacts on `bit-chord-base`:
+
+```
+app/build/outputs/bundle/prodRelease/app-prod-release.aab
+app/build/outputs/apk/prod/release/app-prod-arm64-v8a-release.apk
+app/build/outputs/apk/prod/release/app-prod-universal-release.apk
+```
+
+Version: `1.1.0` (`versionCode 3`).
+
 - Application ID: `app.ukiyo.music`
 - App name: Ukiyo Music
 - Min SDK: 26
